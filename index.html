@@ -243,7 +243,7 @@
             <button class="tab-btn" onclick="switchTab('sky')">☁️ Bầu Trời & V.v</button>
         </div>
 
-        <!-- Khu vực Tải ảnh lên có nút bấm -->
+        <!-- Khu vực Tải ảnh lên -->
         <div class="upload-section">
             <h3 id="uploadLabel" style="margin-top:0; margin-bottom: 5px; font-size: 1rem;">Mục: Bản Thân</h3>
             <p style="color: #6b7280; font-size: 0.8rem; margin-bottom: 12px;">Chọn ảnh rồi bấm nút Tải Lên để lưu</p>
@@ -274,12 +274,31 @@
         </div>
     </div>
 
-    <div id="notification" style="background-color: #10b981;">Thành công!</div>
+    <div id="notification">Thành công!</div>
 
     <script>
         let currentCategory = 'self';
         let selectedFiles = [];
-        const STORAGE_KEY = 'categorized_images_v4';
+        
+        // Khởi tạo IndexedDB
+        let db;
+        const dbRequest = indexedDB.open("ImageGalleryDB", 1);
+
+        dbRequest.onerror = function(event) {
+            console.error("Lỗi mở Database:", event.target.error);
+        };
+
+        dbRequest.onsuccess = function(event) {
+            db = event.target.result;
+            loadAllGalleries(); // Tải ảnh ngay khi DB sẵn sàng
+        };
+
+        dbRequest.onupgradeneeded = function(event) {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains("images")) {
+                db.createObjectStore("images", { keyPath: "id", autoIncrement: true });
+            }
+        };
 
         function switchTab(category) {
             currentCategory = category;
@@ -305,7 +324,7 @@
             selectedFiles = this.files;
             if (selectedFiles.length > 0) {
                 fileNameDisplay.innerText = `Đã chọn ${selectedFiles.length} ảnh`;
-                uploadBtn.disabled = false; // Bật nút tải lên
+                uploadBtn.disabled = false;
             } else {
                 fileNameDisplay.innerText = 'Chưa có ảnh nào được chọn';
                 uploadBtn.disabled = true;
@@ -313,32 +332,39 @@
         });
 
         function uploadSelectedImages() {
-            if (selectedFiles.length === 0) return;
-
-            let processedCount = 0;
-            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
+            if (selectedFiles.length === 0 || !db) return;
 
             Array.from(selectedFiles).forEach(file => {
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
                     reader.onloadend = function() {
-                        data[currentCategory].unshift(reader.result);
-                        processedCount++;
+                        const transaction = db.transaction(["images"], "readwrite");
+                        const store = transaction.objectStore("images");
+                        
+                        const imageData = {
+                            category: currentCategory,
+                            src: reader.result,
+                            createdAt: Date.now()
+                        };
 
-                        // Khi đã xử lý xong tất cả ảnh được chọn
-                        if (processedCount === selectedFiles.length) {
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                        store.add(imageData);
+
+                        transaction.oncomplete = function() {
                             loadAllGalleries();
                             resetUploadForm();
                             showNotification('Đã lưu ảnh thành công!');
-                        }
+                        };
+
+                        transaction.onerror = function(event) {
+                            console.error("Lỗi khi lưu ảnh:", event.target.error);
+                        };
                     }
                 }
             });
         }
 
-        function resetUploadForm() {
+        fn_reset = function resetUploadForm() {
             fileInput.value = '';
             selectedFiles = [];
             fileNameDisplay.innerText = 'Chưa có ảnh nào được chọn';
@@ -346,10 +372,31 @@
         }
 
         function loadAllGalleries() {
-            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
-            renderGallery('self', data.self);
-            renderGallery('ny', data.ny);
-            renderGallery('sky', data.sky);
+            if (!db) return;
+
+            const transaction = db.transaction(["images"], "readonly");
+            const store = transaction.objectStore("images");
+            const request = store.getAll();
+
+            request.onsuccess = function(event) {
+                const allImages = event.target.result;
+                
+                // Phân loại ảnh theo danh mục
+                const categorized = { self: [], ny: [], sky: [] };
+                
+                // Sắp xếp ảnh mới nhất lên đầu
+                allImages.sort((a, b) => b.createdAt - a.createdAt);
+
+                allImages.forEach(img => {
+                    if (categorized[img.category]) {
+                        categorized[img.category].push(img);
+                    }
+                });
+
+                renderGallery('self', categorized.self);
+                renderGallery('ny', categorized.ny);
+                renderGallery('sky', categorized.sky);
+            };
         }
 
         function renderGallery(category, images) {
@@ -361,20 +408,20 @@
                 return;
             }
 
-            images.forEach((imgSrc, index) => {
+            images.forEach((imgObj) => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 
                 const img = document.createElement('img');
-                img.src = imgSrc;
-                img.onclick = () => window.open(imgSrc);
+                img.src = imgObj.src;
+                img.onclick = () => window.open(imgObj.src);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.innerHTML = '&times;';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
-                    deleteImage(category, index);
+                    deleteImage(imgObj.id);
                 };
 
                 card.appendChild(img);
@@ -383,12 +430,17 @@
             });
         }
 
-        function deleteImage(category, index) {
-            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
-            data[category].splice(index, 1);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            showNotification('Đã xóa ảnh!');
-            loadAllGalleries();
+        function deleteImage(id) {
+            if (!db) return;
+
+            const transaction = db.transaction(["images"], "readwrite");
+            const store = transaction.objectStore("images");
+            store.delete(id);
+
+            transaction.oncomplete = function() {
+                showNotification('Đã xóa ảnh!');
+                loadAllGalleries();
+            };
         }
 
         function showNotification(text) {
@@ -397,8 +449,6 @@
             notification.classList.add('show');
             setTimeout(() => notification.classList.remove('show'), 2000);
         }
-
-        document.addEventListener("DOMContentLoaded", loadAllGalleries);
     </script>
 </body>
 </html>
