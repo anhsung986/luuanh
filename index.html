@@ -8,6 +8,7 @@
         :root {
             --primary-color: #3b82f6;
             --danger-color: #ef4444;
+            --success-color: #10b981;
             --bg-color: #f3f4f6;
             --card-bg: #ffffff;
             --text-color: #1f2937;
@@ -163,7 +164,7 @@
         .gallery {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 12px;
         }
 
         .card {
@@ -172,7 +173,14 @@
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .img-container {
+            position: relative;
             aspect-ratio: 1/1;
+            width: 100%;
         }
 
         .card img {
@@ -183,21 +191,49 @@
             cursor: pointer;
         }
 
-        .delete-btn {
+        /* Nhóm nút bấm trên góc ảnh (Tải xuống & Xóa) */
+        .card-actions {
             position: absolute;
             top: 5px;
             right: 5px;
-            background-color: rgba(239, 68, 68, 0.9);
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            background-color: rgba(0, 0, 0, 0.6);
             color: white;
             border: none;
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .download-btn:hover {
+            background-color: var(--success-color);
+        }
+
+        .delete-btn:hover {
+            background-color: var(--danger-color);
+        }
+
+        .card-date {
+            font-size: 0.7rem;
+            color: #6b7280;
+            text-align: center;
+            padding: 6px 4px;
+            background-color: #fafafa;
+            border-top: 1px solid #f0f0f0;
         }
 
         .empty-text {
@@ -280,7 +316,6 @@
         let currentCategory = 'self';
         let selectedFiles = [];
         
-        // Khởi tạo IndexedDB
         let db;
         const dbRequest = indexedDB.open("ImageGalleryDB", 1);
 
@@ -290,7 +325,7 @@
 
         dbRequest.onsuccess = function(event) {
             db = event.target.result;
-            loadAllGalleries(); // Tải ảnh ngay khi DB sẵn sàng
+            loadAllGalleries();
         };
 
         dbRequest.onupgradeneeded = function(event) {
@@ -355,16 +390,12 @@
                             resetUploadForm();
                             showNotification('Đã lưu ảnh thành công!');
                         };
-
-                        transaction.onerror = function(event) {
-                            console.error("Lỗi khi lưu ảnh:", event.target.error);
-                        };
                     }
                 }
             });
         }
 
-        fn_reset = function resetUploadForm() {
+        function resetUploadForm() {
             fileInput.value = '';
             selectedFiles = [];
             fileNameDisplay.innerText = 'Chưa có ảnh nào được chọn';
@@ -380,11 +411,8 @@
 
             request.onsuccess = function(event) {
                 const allImages = event.target.result;
-                
-                // Phân loại ảnh theo danh mục
                 const categorized = { self: [], ny: [], sky: [] };
                 
-                // Sắp xếp ảnh mới nhất lên đầu
                 allImages.sort((a, b) => b.createdAt - a.createdAt);
 
                 allImages.forEach(img => {
@@ -412,22 +440,63 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 
+                // Khung chứa ảnh và nút bấm
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'img-container';
+
                 const img = document.createElement('img');
                 img.src = imgObj.src;
                 img.onclick = () => window.open(imgObj.src);
 
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'card-actions';
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'action-btn download-btn';
+                downloadBtn.innerHTML = '📥';
+                downloadBtn.title = 'Tải ảnh về';
+                downloadBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    downloadImage(imgObj.src);
+                };
+
                 const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-btn';
+                deleteBtn.className = 'action-btn delete-btn';
                 deleteBtn.innerHTML = '&times;';
+                deleteBtn.title = 'Xóa ảnh';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
                     deleteImage(imgObj.id);
                 };
 
-                card.appendChild(img);
-                card.appendChild(deleteBtn);
+                actionsDiv.appendChild(downloadBtn);
+                actionsDiv.appendChild(deleteBtn);
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(actionsDiv);
+
+                // Phần hiển thị ngày tháng năm tải lên
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'card-date';
+                
+                const dateObj = new Date(imgObj.createdAt);
+                const timeString = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const dateString = dateObj.toLocaleDateString('vi-VN');
+                dateDiv.innerText = `${timeString} - ${dateString}`;
+
+                card.appendChild(imgContainer);
+                card.appendChild(dateDiv);
                 gallery.appendChild(card);
             });
+        }
+
+        function downloadImage(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kyniem_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showNotification('Đang tải ảnh xuống...');
         }
 
         function deleteImage(id) {
