@@ -3,78 +3,402 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lưu Ảnh Nhanh</title>
+    <title>Kho Ảnh Kỷ Niệm</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; background: #fafafa; }
-        h2 { text-align: center; }
-        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-        .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; }
-        button { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 12px; }
+        :root {
+            --primary-color: #3b82f6;
+            --danger-color: #ef4444;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+
+        header p {
+            margin-top: 5px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        /* --- Thanh chọn danh mục (Tabs) --- */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            background: #e5e7eb;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #4b5563;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        }
+
+        /* --- Khu vực Upload --- */
+        .upload-section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            margin-bottom: 25px;
+            border: 2px dashed #d1d5db;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .custom-file-btn, .upload-action-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border: none;
+            transition: var(--transition);
+        }
+
+        .custom-file-btn {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+
+        .custom-file-btn:hover {
+            background-color: #d1d5db;
+        }
+
+        .upload-action-btn {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .upload-action-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .upload-action-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #file-name-display {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+
+        /* --- Thư viện ảnh (Grid) --- */
+        .category-section {
+            display: none;
+        }
+
+        .category-section.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #374151;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 8px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            aspect-ratio: 1/1;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .empty-text {
+            color: #9ca3af;
+            font-style: italic;
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: #1f2937;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        #notification.show {
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
 
-    <h2>Kho Ảnh Của Tôi</h2>
+    <div class="main-container">
+        <header>
+            <h1>Kho Ảnh Kỷ Niệm</h1>
+            <p>Lưu giữ khoảnh khắc tuyệt vời</p>
+        </header>
 
-    <div class="box">
-        <input type="file" id="imageInput" accept="image/*">
-        <button style="background: #007bff;" onclick="uploadImage()">Lưu ảnh</button>
+        <!-- Thanh chuyển đổi danh mục -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('self')">👤 Bản Thân</button>
+            <button class="tab-btn" onclick="switchTab('ny')">❤️ Người Yêu</button>
+            <button class="tab-btn" onclick="switchTab('sky')">☁️ Bầu Trời & V.v</button>
+        </div>
+
+        <!-- Khu vực Tải ảnh lên có nút bấm -->
+        <div class="upload-section">
+            <h3 id="uploadLabel" style="margin-top:0; margin-bottom: 5px; font-size: 1rem;">Mục: Bản Thân</h3>
+            <p style="color: #6b7280; font-size: 0.8rem; margin-bottom: 12px;">Chọn ảnh rồi bấm nút Tải Lên để lưu</p>
+            
+            <input type="file" id="imageInput" style="display: none;" accept="image/*" multiple>
+            
+            <div class="btn-group">
+                <button class="custom-file-btn" onclick="document.getElementById('imageInput').click()">📁 Chọn ảnh</button>
+                <button id="uploadBtn" class="upload-action-btn" onclick="uploadSelectedImages()" disabled>🚀 Tải lên</button>
+            </div>
+            <div id="file-name-display">Chưa có ảnh nào được chọn</div>
+        </div>
+
+        <!-- Nội dung từng danh mục -->
+        <div id="section-self" class="category-section active">
+            <div class="section-title">Bản Thân</div>
+            <div class="gallery" id="gallery-self"></div>
+        </div>
+
+        <div id="section-ny" class="category-section">
+            <div class="section-title">Người Yêu</div>
+            <div class="gallery" id="gallery-ny"></div>
+        </div>
+
+        <div id="section-sky" class="category-section">
+            <div class="section-title">Bầu Trời & V.v</div>
+            <div class="gallery" id="gallery-sky"></div>
+        </div>
     </div>
 
-    <div class="gallery" id="gallery"></div>
+    <div id="notification" style="background-color: #10b981;">Thành công!</div>
 
     <script>
-        // Tải ảnh đã lưu khi mở trang
-        document.addEventListener("DOMContentLoaded", loadImages);
+        let currentCategory = 'self';
+        let selectedFiles = [];
+        const STORAGE_KEY = 'categorized_images_v4';
 
-        function uploadImage() {
-            const fileInput = document.getElementById('imageInput');
-            const file = fileInput.files[0];
-            if (!file) return alert('Vui lòng chọn ảnh trước!');
+        function switchTab(category) {
+            currentCategory = category;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64Image = e.target.result;
-                
-                // Lấy danh sách cũ từ LocalStorage
-                let images = JSON.parse(localStorage.getItem('myImages')) || [];
-                images.push(base64Image);
-                
-                // Lưu lại vào LocalStorage
-                localStorage.setItem('myImages', JSON.stringify(images));
-                
-                fileInput.value = '';
-                loadImages();
+            document.querySelectorAll('.category-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(`section-${category}`).classList.add('active');
+
+            const titles = {
+                'self': 'Bản Thân',
+                'ny': 'Người Yêu',
+                'sky': 'Bầu Trời & V.v'
             };
-            reader.readAsDataURL(file);
+            document.getElementById('uploadLabel').innerText = `Mục: ${titles[category]}`;
         }
 
-        function loadImages() {
-            const gallery = document.getElementById('gallery');
+        const fileInput = document.getElementById('imageInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileNameDisplay = document.getElementById('file-name-display');
+
+        fileInput.addEventListener('change', function() {
+            selectedFiles = this.files;
+            if (selectedFiles.length > 0) {
+                fileNameDisplay.innerText = `Đã chọn ${selectedFiles.length} ảnh`;
+                uploadBtn.disabled = false; // Bật nút tải lên
+            } else {
+                fileNameDisplay.innerText = 'Chưa có ảnh nào được chọn';
+                uploadBtn.disabled = true;
+            }
+        });
+
+        function uploadSelectedImages() {
+            if (selectedFiles.length === 0) return;
+
+            let processedCount = 0;
+            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
+
+            Array.from(selectedFiles).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onloadend = function() {
+                        data[currentCategory].unshift(reader.result);
+                        processedCount++;
+
+                        // Khi đã xử lý xong tất cả ảnh được chọn
+                        if (processedCount === selectedFiles.length) {
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                            loadAllGalleries();
+                            resetUploadForm();
+                            showNotification('Đã lưu ảnh thành công!');
+                        }
+                    }
+                }
+            });
+        }
+
+        function resetUploadForm() {
+            fileInput.value = '';
+            selectedFiles = [];
+            fileNameDisplay.innerText = 'Chưa có ảnh nào được chọn';
+            uploadBtn.disabled = true;
+        }
+
+        function loadAllGalleries() {
+            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
+            renderGallery('self', data.self);
+            renderGallery('ny', data.ny);
+            renderGallery('sky', data.sky);
+        }
+
+        function renderGallery(category, images) {
+            const gallery = document.getElementById(`gallery-${category}`);
             gallery.innerHTML = '';
-            let images = JSON.parse(localStorage.getItem('myImages')) || [];
+
+            if (images.length === 0) {
+                gallery.innerHTML = `<div class="empty-text">Chưa có ảnh nào.</div>`;
+                return;
+            }
 
             images.forEach((imgSrc, index) => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = `
-                    <img src="${imgSrc}" alt="Ảnh">
-                    <br>
-                    <button onclick="deleteImage(${index})">Xóa</button>
-                `;
+                
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.onclick = () => window.open(imgSrc);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteImage(category, index);
+                };
+
+                card.appendChild(img);
+                card.appendChild(deleteBtn);
                 gallery.appendChild(card);
             });
         }
 
-        function deleteImage(index) {
-            let images = JSON.parse(localStorage.getItem('myImages')) || [];
-            images.splice(index, 1);
-            localStorage.setItem('myImages', JSON.stringify(images));
-            loadImages();
+        function deleteImage(category, index) {
+            let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { self: [], ny: [], sky: [] };
+            data[category].splice(index, 1);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            showNotification('Đã xóa ảnh!');
+            loadAllGalleries();
         }
+
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            notification.innerText = text;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 2000);
+        }
+
+        document.addEventListener("DOMContentLoaded", loadAllGalleries);
     </script>
 </body>
 </html>
-
