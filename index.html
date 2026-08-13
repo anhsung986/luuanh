@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lưu Ảnh Nhanh</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; background: #fafafa; }
+        h2 { text-align: center; }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+        .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; }
+        button { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h2>Kho Ảnh Của Tôi</h2>
+
+    <div class="box">
+        <input type="file" id="imageInput" accept="image/*">
+        <button style="background: #007bff;" onclick="uploadImage()">Lưu ảnh</button>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        // Tải ảnh đã lưu khi mở trang
+        document.addEventListener("DOMContentLoaded", loadImages);
+
+        function uploadImage() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            if (!file) return alert('Vui lòng chọn ảnh trước!');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                
+                // Lấy danh sách cũ từ LocalStorage
+                let images = JSON.parse(localStorage.getItem('myImages')) || [];
+                images.push(base64Image);
+                
+                // Lưu lại vào LocalStorage
+                localStorage.setItem('myImages', JSON.stringify(images));
+                
+                fileInput.value = '';
+                loadImages();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadImages() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+            let images = JSON.parse(localStorage.getItem('myImages')) || [];
+
+            images.forEach((imgSrc, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${imgSrc}" alt="Ảnh">
+                    <br>
+                    <button onclick="deleteImage(${index})">Xóa</button>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function deleteImage(index) {
+            let images = JSON.parse(localStorage.getItem('myImages')) || [];
+            images.splice(index, 1);
+            localStorage.setItem('myImages', JSON.stringify(images));
+            loadImages();
+        }
+    </script>
+</body>
+</html>
+
